@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	// AWS region
 	DOMAIN     = "demees.dev"
 	RECORDNAME = "compute.demees.dev"
 )
