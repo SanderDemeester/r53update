@@ -3,19 +3,21 @@ package main
 import (
 	"fmt"
 
+	"bufio"
+	"os"
+	"strings"
+
 	"demees.local/r53update/utils"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"os"
-	"bufio"
-	"strings"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/route53"
 )
 
 const (
 	DOMAIN     = "demees.dev"
 	RECORDNAME = "compute.demees.dev"
+	PATH       = "/home/ec2-user/.aws/credentials"
 )
 
 func main() {
@@ -27,40 +29,41 @@ func main() {
 	}
 
 	// Read credentials from AWS credentials file
-	file, err := os.Open("/home/ec2-user/.aws/credentials")
-	
+	file, err := os.Open(PATH)
+
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	scanner := bufio.NewScanner(file)
-	var match = false
 	var access_key_id = ""
 	var secret_access_key = ""
 
-	for scanner.Scan(){
+	for scanner.Scan() {
 		line := scanner.Text()
-		
-		if(line == "[default]"){
-			match=true
-		}
-		if(match == true && strings.HasPrefix(line, "aws_access_key_id=")){
-			access_key_id = strings.Split(line, "=")[1]
-		}
 
-		if(match == true && strings.HasPrefix(line, "aws_secret_access_key=")){
-			secret_access_key = strings.Split(line, "=")[1]	
-			match=false // assume secret access key is the last in the config block - BAD CODE
+		if line == "[default]" {
+			scanner.Scan()
+			line = scanner.Text()
+
+			for line != "" {
+				if strings.HasPrefix(line, "aws_access_key_id=") {
+					access_key_id = strings.Split(line, "=")[1]
+				}
+				if strings.HasPrefix(line, "aws_secret_access_key=") {
+					secret_access_key = strings.Split(line, "=")[1]
+				}
+				scanner.Scan()
+				line = scanner.Text()
+			}
 		}
-		
 	}
-	
 
-	// get AWS session - we are using the NewStaticCredentials on purpose 
+	// get AWS session - we are using the NewStaticCredentials on purpose
 	session, err := session.NewSession(
 		&aws.Config{
-			Credentials: credentials.NewStaticCredentials(access_key_id,secret_access_key,""),
+			Credentials: credentials.NewStaticCredentials(access_key_id, secret_access_key, ""),
 		})
 
 	if err != nil {
